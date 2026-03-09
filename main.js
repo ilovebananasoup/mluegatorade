@@ -39,7 +39,7 @@ function checkRam() {
             return false
         }
     } else {
-        console.log('navigator.deviceMemory API is not supported.');
+        alert('navigator.deviceMemory API is not supported.');
         return true
     }
 }
