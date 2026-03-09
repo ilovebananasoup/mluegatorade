@@ -30,16 +30,14 @@ const passwordInput = document.getElementById("pw-li");
 const loginButton = document.querySelector("#login-section button");
 
 function checkRam() {
-    let eightgigs = true;
     if ('deviceMemory' in navigator) {
         const memory = navigator.deviceMemory;
-        if (memory => 6) {
+        if (memory >= 6) {
             return true
         } else {
             return false
         }
     } else {
-        alert('navigator.deviceMemory API is not supported.');
         return true
     }
 }
