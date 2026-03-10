@@ -243,6 +243,7 @@ function searchGames(search){
 
 
 function openGame(url) {
+    const uid = auth.currentUser?.uid;
 
     const win = window.open("", "_blank");
     if (!win) return;
@@ -283,8 +284,7 @@ iframe{
 
 <body>
 
-<iframe src="${url}" sandbox="allow-scripts allow-forms allow-pointer-lock allow-same-origin"></iframe>
-
+<iframe src="${url}?uid=${uid}" sandbox="allow-scripts allow-forms allow-pointer-lock allow-same-origin"></iframe>
 <script type="module">
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-app.js";

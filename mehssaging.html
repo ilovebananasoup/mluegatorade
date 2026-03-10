@@ -57,6 +57,13 @@ body{
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-app.js";
 
 import {
+  getAuth,
+  onAuthStateChanged,
+  setPersistence,
+  browserLocalPersistence
+} from "https://www.gstatic.com/firebasejs/12.10.0/firebase-auth.js";
+
+import {
   getFirestore,
   collection,
   addDoc,
@@ -66,15 +73,7 @@ import {
   serverTimestamp,
   deleteDoc,
   getDocs,
-  limit
-} from "https://www.gstatic.com/firebasejs/12.10.0/firebase-firestore.js";
-
-import {
-  getAuth,
-  onAuthStateChanged
-} from "https://www.gstatic.com/firebasejs/12.10.0/firebase-auth.js";
-
-import {
+  limit,
   doc,
   getDoc
 } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-firestore.js";
@@ -92,6 +91,11 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const auth = getAuth(app);
+
+const params = new URLSearchParams(location.search);
+const uid = params.get("uid");
+
+await setPersistence(auth, browserLocalPersistence);
 
 const messageboard = document.getElementById("messageboard");
 const input = document.getElementById("input");
@@ -160,16 +164,18 @@ function startChat(){
 
     onSnapshot(q,(snapshot)=>{
 
-        messageboard.textContent="";
+        snapshot.docChanges().forEach(change => {
 
-        snapshot.forEach(doc=>{
+            if(change.type === "added"){
 
-            const data=doc.data();
+                const data = change.doc.data();
 
-            if(data.user==="SYSTEM"){
-                logMessage("*** "+data.text+" ***");
-            }else{
-                logMessage(data.user+": "+data.text);
+                if(data.user === "SYSTEM"){
+                    logMessage("*** " + data.text + " ***");
+                }else{
+                    logMessage(data.user + ": " + data.text);
+                }
+
             }
 
         });
@@ -190,7 +196,8 @@ onAuthStateChanged(auth,async(user)=>{
 
     }
 
-    const snap=await getDoc(doc(db,"users",user.uid));
+    const userId = user?.uid || uid;
+    const snap = await getDoc(doc(db,"users",userId));
     username=snap.data()?.username || "anon";
 
     input.disabled=false;
@@ -199,11 +206,16 @@ onAuthStateChanged(auth,async(user)=>{
 
     startChat();
 
-    await addDoc(messagesRef,{
-        user:"SYSTEM",
-        text:username+" joined the chat",
-        time:serverTimestamp()
-    });
+    if(!sessionStorage.getItem("joinedChat")){
+
+        await addDoc(messagesRef,{
+            user:"SYSTEM",
+            text:username+" joined the chat",
+            time:serverTimestamp()
+        });
+
+        sessionStorage.setItem("joinedChat","1");
+    }
 
 });
 
