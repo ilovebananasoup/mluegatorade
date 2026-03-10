@@ -44,6 +44,10 @@ body{
     color:#aab3ff;
 }
 
+.pm{
+    color:#6be3ff;
+}
+
 </style>
 </head>
 
@@ -75,7 +79,8 @@ import {
   getDocs,
   limit,
   doc,
-  getDoc
+  getDoc,
+  writeBatch
 } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-firestore.js";
 
 
@@ -92,9 +97,6 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const auth = getAuth(app);
 
-const params = new URLSearchParams(location.search);
-const uid = params.get("uid");
-
 await setPersistence(auth, browserLocalPersistence);
 
 const messageboard = document.getElementById("messageboard");
@@ -108,51 +110,50 @@ let username = "anon";
 let lastMessageTime = 0;
 
 const SPAM_DELAY = 1500;
+let connected = false;
 
 
 
-function logMessage(text){
+function createMessageElement(id,data){
 
     const div = document.createElement("div");
+    div.dataset.id = id;
 
-    if(text.startsWith("***")){
-        div.className="system";
-        div.textContent=text.replace(/\*\*\*/g,"").trim();
-    }else{
+    if(data.user === "SYSTEM"){
 
-        const parts=text.split(": ");
-        const name=parts.shift();
-        const msg=parts.join(": ");
-
-        const userSpan=document.createElement("span");
-        userSpan.className="username";
-        userSpan.textContent=name+": ";
-
-        div.appendChild(userSpan);
-        div.append(msg);
+        div.className = "system";
+        div.textContent = data.text;
+        return div;
 
     }
 
-    messageboard.appendChild(div);
-    messageboard.scrollTop=messageboard.scrollHeight;
+    if(data.to){
 
-}
+        div.classList.add("pm");
 
+        const span = document.createElement("span");
+        span.className="username";
 
+        if(data.user === username){
+            span.textContent="(PM to "+data.to+") ";
+        }else{
+            span.textContent="(PM from "+data.user+") ";
+        }
 
-async function trimMessages(){
+        div.appendChild(span);
+        div.append(data.text);
+        return div;
 
-    const snap = await getDocs(query(messagesRef,orderBy("time")));
-
-    const docs=snap.docs;
-
-    if(docs.length<=100) return;
-
-    const remove=docs.slice(0,docs.length-100);
-
-    for(const d of remove){
-        await deleteDoc(d.ref);
     }
+
+    const userSpan = document.createElement("span");
+    userSpan.className="username";
+    userSpan.textContent = data.user + ": ";
+
+    div.appendChild(userSpan);
+    div.append(data.text);
+
+    return div;
 
 }
 
@@ -160,27 +161,62 @@ async function trimMessages(){
 
 function startChat(){
 
-    const q=query(messagesRef,orderBy("time"),limit(100));
+    const q = query(messagesRef,orderBy("time"),limit(100));
 
     onSnapshot(q,(snapshot)=>{
 
+        if(!connected){
+            messageboard.innerHTML="";
+            connected=true;
+        }
+
         snapshot.docChanges().forEach(change => {
+
+            const id = change.doc.id;
+            const data = change.doc.data();
+
+            if(data.to && data.to !== username && data.user !== username){
+                return;
+            }
 
             if(change.type === "added"){
 
-                const data = change.doc.data();
+                const el = createMessageElement(id,data);
+                messageboard.appendChild(el);
+                messageboard.scrollTop = messageboard.scrollHeight;
 
-                if(data.user === "SYSTEM"){
-                    logMessage("*** " + data.text + " ***");
-                }else{
-                    logMessage(data.user + ": " + data.text);
-                }
+            }
+
+            if(change.type === "removed"){
+
+                const el = messageboard.querySelector(`[data-id="${id}"]`);
+                if(el) el.remove();
 
             }
 
         });
 
     });
+
+}
+
+
+
+async function trimMessages(){
+
+    const snap = await getDocs(query(messagesRef,orderBy("time","asc")));
+
+    if(snap.size <= 100) return;
+
+    const remove = snap.docs.slice(0,snap.size-100);
+
+    const batch = writeBatch(db);
+
+    remove.forEach(d=>{
+        batch.delete(d.ref);
+    });
+
+    await batch.commit();
 
 }
 
@@ -196,9 +232,8 @@ onAuthStateChanged(auth,async(user)=>{
 
     }
 
-    const userId = user?.uid || uid;
-    const snap = await getDoc(doc(db,"users",userId));
-    username=snap.data()?.username || "anon";
+    const snap = await getDoc(doc(db,"users",user.uid));
+    username = snap.data()?.username || "anon";
 
     input.disabled=false;
     input.placeholder="type message...";
@@ -215,6 +250,7 @@ onAuthStateChanged(auth,async(user)=>{
         });
 
         sessionStorage.setItem("joinedChat","1");
+
     }
 
 });
@@ -235,22 +271,51 @@ input.addEventListener("keydown",async(e)=>{
     const now=Date.now();
 
     if(now-lastMessageTime<SPAM_DELAY){
-        logMessage("*** slow down ***");
         return;
     }
 
     lastMessageTime=now;
-
     input.value="";
+
+
+
+    if(text.startsWith("/pm ")){
+
+        const parts = text.split(" ");
+        const target = parts[1];
+        const msg = parts.slice(2).join(" ");
+
+        if(!target || !msg) return;
+
+        await addDoc(messagesRef,{
+            user:username,
+            text:msg,
+            to:target,
+            time:serverTimestamp()
+        });
+
+        return;
+
+    }
 
 
 
     if(text==="/clear" && admins.includes(username)){
 
-        const snap=await getDocs(messagesRef);
+        const snap = await getDocs(messagesRef);
 
-        snap.forEach(async d=>{
-            await deleteDoc(d.ref);
+        const batch = writeBatch(db);
+
+        snap.docs.forEach(d=>{
+            batch.delete(d.ref);
+        });
+
+        await batch.commit();
+
+        await addDoc(messagesRef,{
+            user:"SYSTEM",
+            text:"chat cleared by "+username,
+            time:serverTimestamp()
         });
 
         return;
@@ -262,6 +327,7 @@ input.addEventListener("keydown",async(e)=>{
     await addDoc(messagesRef,{
         user:username,
         text:text,
+        to:null,
         time:serverTimestamp()
     });
 
@@ -270,8 +336,11 @@ input.addEventListener("keydown",async(e)=>{
 });
 
 
-logMessage("Connecting to chat...");
-console.log("auth user:", auth.currentUser);
+
+const connecting=document.createElement("div");
+connecting.className="system";
+connecting.textContent="connecting to chat...";
+messageboard.appendChild(connecting);
 
 </script>
 
