@@ -55,8 +55,7 @@ function listenForCommands(uid){
 
                 const data = change.doc.data();
 
-                if(data.created < commandStartTime) return;
-
+                if(!data.created || data.created < commandStartTime) return;
                 await deleteDoc(change.doc.ref);
 
                 if(data.type === "signout"){
