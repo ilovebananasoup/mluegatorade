@@ -267,6 +267,9 @@ function openGame(url) {
 <!DOCTYPE html>
 <html>
 <head>
+<title>Dashboard</title>
+<link rel="icon" type="image/x-icon" href="https://andrewlovesmillie.com/assets/icons/canvas.ico"></head>
+
 <style>
 html,body{
     margin:0;
