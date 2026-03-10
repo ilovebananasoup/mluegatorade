@@ -265,8 +265,8 @@ input.addEventListener("keydown",async(e)=>{
 
     e.preventDefault();
 
-    if(!auth.currentUser) return;
-
+    if(!uid) return;
+    
     const text=input.value.trim();
     if(!text) return;
 
