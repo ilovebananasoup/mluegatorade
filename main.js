@@ -467,9 +467,10 @@ onAuthStateChanged(auth, async (user) => {
     if (user) {
 
         try {
+            await user.getIdToken(true);
             await user.reload();
         } catch (err) {
-            console.log("Account no longer exists");
+            console.log("Account no longer exists or token invalid");
             await signOut(auth);
             location.reload();
             return;
@@ -500,7 +501,6 @@ onAuthStateChanged(auth, async (user) => {
     } else {
 
         console.log("not logged in");
-
         startPage.style.display = "flex";
 
     }
