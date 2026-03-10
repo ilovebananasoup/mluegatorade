@@ -236,8 +236,14 @@ onAuthStateChanged(auth, async (user) => {
     }
 
     const snap = await getDoc(doc(db,"users",userId));
-    username = snap.data()?.username || "anon";
 
+    const data = snap.data();
+
+    if (snap.exists() && data.username) {
+        username = data.username;
+    } else {
+        username = "anon";
+    }
     input.disabled=false;
     input.placeholder="type message...";
     input.focus();
@@ -266,7 +272,7 @@ input.addEventListener("keydown",async(e)=>{
     e.preventDefault();
 
     if(!uid) return;
-    
+
     const text=input.value.trim();
     if(!text) return;
 

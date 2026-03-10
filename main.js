@@ -462,9 +462,18 @@ async function setOnline(user){
     });
 }
 
-onAuthStateChanged(auth,async (user)=>{
+onAuthStateChanged(auth, async (user) => {
 
-    if(user){
+    if (user) {
+
+        try {
+            await user.reload();
+        } catch (err) {
+            console.log("Account no longer exists");
+            await signOut(auth);
+            location.reload();
+            return;
+        }
 
         const snap = await getDoc(doc(db,"users",user.uid));
 
@@ -472,7 +481,7 @@ onAuthStateChanged(auth,async (user)=>{
             alert(snap.data().banMessage || "You are banned");
             await signOut(auth);
             return;
-}
+        }
 
         console.log("logged in:",user.uid);
 
@@ -480,7 +489,7 @@ onAuthStateChanged(auth,async (user)=>{
 
         listenForCommands(user.uid);
 
-        setOnline(user)
+        setOnline(user);
 
         initGames(user);
         loadSettings(user);
@@ -488,7 +497,7 @@ onAuthStateChanged(auth,async (user)=>{
 
         listenForAdminMessages(user);
 
-    }else{
+    } else {
 
         console.log("not logged in");
 
