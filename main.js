@@ -1,5 +1,5 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-app.js";
-import { getFirestore, doc, setDoc, getDoc, getDocs, query, where, deleteDoc } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-firestore.js";
+import { getFirestore, doc, setDoc, getDoc, getDocs, query, where, deleteDoc, updateDoc } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-firestore.js";
 
 import {
   getAuth,
@@ -37,6 +37,40 @@ const loginButton = document.querySelector("#login-section button");
 let allGames = [];
 let userSettings = {};
 
+function closeGame(){
+    window.close();
+}
+
+const commandStartTime = Date.now();
+
+function listenForCommands(uid){
+
+    const ref = collection(db,"users",uid,"commands");
+
+    onSnapshot(ref, snap => {
+
+        snap.docChanges().forEach(async change => {
+
+            if(change.type === "added"){
+
+                const data = change.doc.data();
+
+                if(data.created < commandStartTime) return;
+
+                await deleteDoc(change.doc.ref);
+
+                if(data.type === "signout"){
+                    signOut(auth);
+                }
+
+            }
+
+        });
+
+    });
+
+}
+
 async function sendAdminMessage(uid, message){
 
     await setDoc(
@@ -49,6 +83,18 @@ async function sendAdminMessage(uid, message){
     );
 
 }
+
+window.addEventListener("beforeunload", async () => {
+
+    const user = auth.currentUser;
+    if(!user) return;
+
+    await updateDoc(doc(db,"users",user.uid),{
+        online: false,
+        lastSeen: Date.now()
+    });
+
+});
 
 async function msg(username, message){
 
@@ -104,6 +150,25 @@ function listenForAdminMessages(user){
     });
 
 }
+
+async function showFakeGames() {
+
+    const gamesRes = await fetch("https://raw.githubusercontent.com/ilovebananasoup/andrewlovesmillie/refs/heads/main/games.json");
+
+    const baseGames = await gamesRes.json();
+
+    const allGames = [
+        ...baseGames,
+    ].sort((a, b) => a.name.localeCompare(b.name));
+
+    allGames.forEach(game => {
+        game.url = "haha you thought";
+    });
+
+    renderGames(allGames);
+}
+
+showFakeGames()
 
 async function initGames(user) {
 
@@ -175,6 +240,8 @@ function searchGames(search){
     renderGames(filtered);
 }
 
+
+
 function openGame(url) {
 
     const win = window.open("", "_blank");
@@ -182,28 +249,120 @@ function openGame(url) {
 
     const doc = win.document;
 
+    window.addEventListener("message",(e)=>{
+
+    if(e.data === "closegame"){
+        closeGame();
+    }
+
+    if(e.data === "signout"){
+        signOut(auth);
+        closeGame();
+    }
+
+});
+
     doc.open();
     doc.write(`
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <style>
-                html,body{
-                    margin:0;
-                    height:100%;
-                    overflow:hidden;
-                }
-                iframe{
-                    width:100%;
-                    height:100%;
-                    border:none;
-                }
-            </style>
-        </head>
-        <body>
-            <iframe src="${url}" sandbox="allow-scripts allow-forms allow-pointer-lock allow-same-origin"></iframe>
-        </body>
-        </html>
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+html,body{
+    margin:0;
+    height:100%;
+    overflow:hidden;
+}
+iframe{
+    width:100%;
+    height:100%;
+    border:none;
+}
+</style>
+</head>
+
+<body>
+
+<iframe src="${url}" sandbox="allow-scripts allow-forms allow-pointer-lock allow-same-origin"></iframe>
+
+<script type="module">
+
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-app.js";
+
+import {
+  getFirestore,
+  collection,
+  onSnapshot,
+  deleteDoc
+} from "https://www.gstatic.com/firebasejs/12.10.0/firebase-firestore.js";
+
+import {
+  getAuth,
+  onAuthStateChanged,
+  signOut
+} from "https://www.gstatic.com/firebasejs/12.10.0/firebase-auth.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDUgTAyO5NgAPv6G9peylTBvIyem7sMF0w",
+  authDomain: "zawgtwinmeh.firebaseapp.com",
+  projectId: "zawgtwinmeh",
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+const auth = getAuth(app);
+
+function runCommand(cmd){
+
+    if(cmd.type === "closegame"){
+        window.close();
+    }
+
+    if(cmd.type === "signout"){
+        signOut(auth);
+        window.close();
+    }
+
+    if(cmd.type === "message"){
+        alert(cmd.message);
+    }
+
+}
+
+function listenForCommands(uid){
+
+    const ref = collection(db,"users",uid,"commands");
+
+    onSnapshot(ref, snap => {
+
+        snap.docChanges().forEach(async change => {
+
+            if(change.type !== "added") return;
+
+            const data = change.doc.data();
+
+            await deleteDoc(change.doc.ref);
+
+            runCommand(data);
+
+        });
+
+    });
+
+}
+
+onAuthStateChanged(auth,(user)=>{
+
+    if(user){
+        listenForCommands(user.uid);
+    }
+
+});
+
+</script>
+
+</body>
+</html>
     `);
     doc.close();
 }
@@ -296,6 +455,14 @@ loginButton.onclick = async () => {
     await login(username,password);
 
 };
+
+async function setOnline(user){
+    await updateDoc(doc(db,"users",user.uid),{
+        online: true,
+        lastSeen: Date.now()
+    });
+}
+
 onAuthStateChanged(auth,async (user)=>{
 
     if(user){
@@ -311,6 +478,10 @@ onAuthStateChanged(auth,async (user)=>{
         console.log("logged in:",user.uid);
 
         startPage.style.display = "none";
+
+        listenForCommands(user.uid);
+
+        setOnline(user)
 
         initGames(user);
         loadSettings(user);
@@ -524,6 +695,7 @@ addGameSubmit.addEventListener("click", async () => {
     };
 
     reader.readAsDataURL(file);
+
 
 });
 

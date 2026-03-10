@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Messenger</title>
+
+<style>
+
+body{
+    background:black;
+    color:#8f9ce7;
+    font-family:monospace;
+    margin:0;
+    height:100vh;
+    display:flex;
+    flex-direction:column;
+}
+
+#messageboard{
+    flex:1;
+    overflow-y:auto;
+    padding:12px;
+    display:flex;
+    flex-direction:column;
+    gap:4px;
+}
+
+#input{
+    border:none;
+    outline:none;
+    padding:12px;
+    background:#050505;
+    border-top:1px solid #1c1c1c;
+    color:#8f9ce7;
+    font-family:monospace;
+}
+
+.system{
+    color:#777;
+    font-style:italic;
+}
+
+.username{
+    color:#aab3ff;
+}
+
+</style>
+</head>
+
+<body>
+
+<div id="messageboard"></div>
+<input id="input" placeholder="loading chat..." disabled>
+
+<script type="module">
+
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-app.js";
+
+import {
+  getFirestore,
+  collection,
+  addDoc,
+  query,
+  orderBy,
+  onSnapshot,
+  serverTimestamp,
+  deleteDoc,
+  getDocs,
+  limit
+} from "https://www.gstatic.com/firebasejs/12.10.0/firebase-firestore.js";
+
+import {
+  getAuth,
+  onAuthStateChanged
+} from "https://www.gstatic.com/firebasejs/12.10.0/firebase-auth.js";
+
+import {
+  doc,
+  getDoc
+} from "https://www.gstatic.com/firebasejs/12.10.0/firebase-firestore.js";
+
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDUgTAyO5NgAPv6G9peylTBvIyem7sMF0w",
+  authDomain: "zawgtwinmeh.firebaseapp.com",
+  projectId: "zawgtwinmeh",
+  storageBucket: "zawgtwinmeh.appspot.com",
+  messagingSenderId: "655399885638",
+  appId: "1:655399885638:web:cc8d2e24ba1418ee466347"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+const auth = getAuth(app);
+
+const messageboard = document.getElementById("messageboard");
+const input = document.getElementById("input");
+
+const messagesRef = collection(db,"messages");
+
+const admins = ["admin"];
+
+let username = "anon";
+let lastMessageTime = 0;
+
+const SPAM_DELAY = 1500;
+
+
+
+function logMessage(text){
+
+    const div = document.createElement("div");
+
+    if(text.startsWith("***")){
+        div.className="system";
+        div.textContent=text.replace(/\*\*\*/g,"").trim();
+    }else{
+
+        const parts=text.split(": ");
+        const name=parts.shift();
+        const msg=parts.join(": ");
+
+        const userSpan=document.createElement("span");
+        userSpan.className="username";
+        userSpan.textContent=name+": ";
+
+        div.appendChild(userSpan);
+        div.append(msg);
+
+    }
+
+    messageboard.appendChild(div);
+    messageboard.scrollTop=messageboard.scrollHeight;
+
+}
+
+
+
+async function trimMessages(){
+
+    const snap = await getDocs(query(messagesRef,orderBy("time")));
+
+    const docs=snap.docs;
+
+    if(docs.length<=100) return;
+
+    const remove=docs.slice(0,docs.length-100);
+
+    for(const d of remove){
+        await deleteDoc(d.ref);
+    }
+
+}
+
+
+
+function startChat(){
+
+    const q=query(messagesRef,orderBy("time"),limit(100));
+
+    onSnapshot(q,(snapshot)=>{
+
+        messageboard.textContent="";
+
+        snapshot.forEach(doc=>{
+
+            const data=doc.data();
+
+            if(data.user==="SYSTEM"){
+                logMessage("*** "+data.text+" ***");
+            }else{
+                logMessage(data.user+": "+data.text);
+            }
+
+        });
+
+    });
+
+}
+
+
+
+onAuthStateChanged(auth,async(user)=>{
+
+    if(!user){
+
+        messageboard.textContent="Not logged in. Open the launcher and log in.";
+        input.disabled=true;
+        return;
+
+    }
+
+    const snap=await getDoc(doc(db,"users",user.uid));
+    username=snap.data()?.username || "anon";
+
+    input.disabled=false;
+    input.placeholder="type message...";
+    input.focus();
+
+    startChat();
+
+    await addDoc(messagesRef,{
+        user:"SYSTEM",
+        text:username+" joined the chat",
+        time:serverTimestamp()
+    });
+
+});
+
+
+
+input.addEventListener("keydown",async(e)=>{
+
+    if(e.key!=="Enter") return;
+
+    e.preventDefault();
+
+    if(!auth.currentUser) return;
+
+    const text=input.value.trim();
+    if(!text) return;
+
+    const now=Date.now();
+
+    if(now-lastMessageTime<SPAM_DELAY){
+        logMessage("*** slow down ***");
+        return;
+    }
+
+    lastMessageTime=now;
+
+    input.value="";
+
+
+
+    if(text==="/clear" && admins.includes(username)){
+
+        const snap=await getDocs(messagesRef);
+
+        snap.forEach(async d=>{
+            await deleteDoc(d.ref);
+        });
+
+        return;
+
+    }
+
+
+
+    await addDoc(messagesRef,{
+        user:username,
+        text:text,
+        time:serverTimestamp()
+    });
+
+    trimMessages();
+
+});
+
+
+logMessage("Connecting to chat...");
+console.log("auth user:", auth.currentUser);
+
+</script>
+
+</body>
+</html>
