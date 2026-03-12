@@ -458,9 +458,14 @@ loginButton.onclick = async () => {
 
 };
 
-function startHeartbeat(user){
+async function startHeartbeat(user){
 
     const ref = doc(db,"users",user.uid);
+
+    await updateDoc(ref,{
+        lastOnline: serverTimestamp(),
+        online: true
+    });
 
     setInterval(async () => {
 
