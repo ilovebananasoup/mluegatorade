@@ -118,48 +118,31 @@ const uid = params.get("uid");
 
 
 
-function createMessageElement(id,data){
-
+function createMessageElement(id, data) {
     const div = document.createElement("div");
     div.dataset.id = id;
 
-    if(data.user === "SYSTEM"){
-
-        div.className = "system";
-        div.textContent = data.text;
-        return div;
-
+    let displayTime = "[...] ";
+    if (data.time) {
+        const date = data.time.toDate();
+        displayTime = "[" + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + "] ";
     }
 
-    if(data.to){
-
-        div.classList.add("pm");
-
-        const span = document.createElement("span");
-        span.className="username";
-
-        if(data.user === username){
-            span.textContent="(PM to "+data.to+") ";
-        }else{
-            span.textContent="(PM from "+data.user+") ";
-        }
-
-        div.appendChild(span);
-        div.append(data.text);
+    if (data.user === "SYSTEM") {
+        div.className = "system";
+        div.textContent = displayTime + data.text;
         return div;
-
     }
 
     const userSpan = document.createElement("span");
-    userSpan.className="username";
-    userSpan.textContent = data.user + ": ";
+    userSpan.className = "username";
+    userSpan.textContent = displayTime + data.user + ": ";
 
     div.appendChild(userSpan);
     div.append(data.text);
-
     return div;
-
 }
+
 
 
 
@@ -275,7 +258,8 @@ input.addEventListener("keydown",async(e)=>{
     const text=input.value.trim();
     if(!text) return;
 
-    const now=Date.now();
+    const now = new Date;
+    const lastMessageTime = Date.now;
 
     if(now-lastMessageTime<SPAM_DELAY){
         return;
@@ -337,7 +321,7 @@ input.addEventListener("keydown",async(e)=>{
     });
 
     await addDoc(messagesRef,{
-        user:timeString+username,
+        user:username,
         text:text,
         to:null,
         time:serverTimestamp()
