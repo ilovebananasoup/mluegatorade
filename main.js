@@ -398,9 +398,18 @@ onAuthStateChanged(auth,(user)=>{
     doc.close();
 }
 
+document.getElementById('search-bar').placeholder = "Search... or input a URL and press enter";
+
 document.getElementById('search-bar')
 .addEventListener("input", () => {
     searchGames(document.getElementById('search-bar').value)
+});
+
+document.getElementById('search-bar')
+.addEventListener("keydown", e => {
+    if (e.key === "Enter") {
+        openGame(document.getElementById('search-bar').value, "Generic Game (" + document.getElementById('search-bar').value + ")");
+    }
 });
 
 function emailFromUsername(username){
