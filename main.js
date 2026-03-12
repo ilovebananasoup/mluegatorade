@@ -1,12 +1,11 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-app.js";
-import { getFirestore, doc, setDoc, getDoc, getDocs, query, where, deleteDoc, updateDoc } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-firestore.js";
+import { getFirestore, doc, setDoc, getDoc, getDocs, query, where, deleteDoc, updateDoc, serverTimestamp, } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-firestore.js";
 
 import {
   getAuth,
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   onAuthStateChanged,
-  serverTimestamp,
   signOut
 } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-auth.js";
 import { collection, onSnapshot } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-firestore.js";
@@ -459,11 +458,23 @@ loginButton.onclick = async () => {
 
 };
 
-async function setOnline(user){
-    await updateDoc(doc(db,"users",user.uid),{
-        online: true,
-        lastSeen: Date.now()
-    });
+function startHeartbeat(user){
+
+    const ref = doc(db,"users",user.uid);
+
+    setInterval(async () => {
+
+        try{
+
+            await updateDoc(ref,{
+                lastOnline: serverTimestamp(),
+                online: true
+            });
+
+        }catch(e){}
+
+    },15000);
+
 }
 
 onAuthStateChanged(auth, async (user) => {
@@ -494,8 +505,7 @@ onAuthStateChanged(auth, async (user) => {
 
         listenForCommands(user.uid);
 
-        setOnline(user);
-
+        startHeartbeat(user);
         initGames(user);
         loadSettings(user);
         watchBan(user);
@@ -712,9 +722,14 @@ addGameSubmit.addEventListener("click", async () => {
 });
 
 window.addEventListener("beforeunload", async () => {
-    await updateDoc(userRef, {
+
+    const user = auth.currentUser;
+    if(!user) return;
+
+    await updateDoc(doc(db,"users",user.uid),{
         lastOnline: serverTimestamp()
     });
+
 });
 
 window.logout = logout;
