@@ -222,8 +222,7 @@ function renderGames(games){
         titleDiv.className = "game-title";
         titleDiv.textContent = game.name;
 
-        gameDiv.onclick = () => openGame(game.url);
-
+        gameDiv.onclick = () => openGame(game.url, game.name);
         gameDiv.append(imgDiv,titleDiv);
         gameArea.appendChild(gameDiv);
 
@@ -241,7 +240,7 @@ function searchGames(search){
 
 
 
-function openGame(url) {
+function openGame(url, gameName) {
     const uid = auth.currentUser?.uid;
 
     const win = window.open("", "_blank");
@@ -297,7 +296,8 @@ import {
   onSnapshot,
   updateDoc,
   deleteDoc,
-  serverTimestamp
+  serverTimestamp,
+  doc
 } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-firestore.js";
 
 import {
@@ -355,6 +355,8 @@ function listenForCommands(uid){
 
 }
 
+const gameName = "${gameName.replace(/"/g,'\\"')}";
+
 async function startHeartbeat(user){    
 
     const ref = doc(db,"users",user.uid);
@@ -370,7 +372,7 @@ async function startHeartbeat(user){
 
             await updateDoc(ref,{
                 lastOnline: serverTimestamp(),
-                online: true
+                lastGame: gameName
             });
 
         }catch(e){}
@@ -500,7 +502,6 @@ async function startHeartbeat(user){
 
             await updateDoc(ref,{
                 lastOnline: serverTimestamp(),
-                online: true
             });
 
         }catch(e){}
