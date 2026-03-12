@@ -33,6 +33,7 @@ body{
     border-top:1px solid #1c1c1c;
     color:#8f9ce7;
     font-family:monospace;
+    word-wrap: break-word;
 }
 
 .system{
@@ -271,8 +272,6 @@ input.addEventListener("keydown",async(e)=>{
 
     e.preventDefault();
 
-    if(!uid) return;
-
     const text=input.value.trim();
     if(!text) return;
 
@@ -330,10 +329,15 @@ input.addEventListener("keydown",async(e)=>{
 
     }
 
-
+    const nowtime = new Date();
+    const timeString = now.toLocaleTimeString('en-US', { 
+        hour: 'numeric', 
+        minute: 'numeric', 
+        hour12: true
+    });
 
     await addDoc(messagesRef,{
-        user:username,
+        user:timeString+username,
         text:text,
         to:null,
         time:serverTimestamp()

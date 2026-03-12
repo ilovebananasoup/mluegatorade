@@ -300,7 +300,7 @@ import {
 
 import {
   getAuth,
-  onAuthStateChanged,
+  onAuthStateChanged,   
   signOut
 } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-auth.js";
 
