@@ -259,7 +259,7 @@ input.addEventListener("keydown",async(e)=>{
     if(!text) return;
 
     const now = new Date;
-    const lastMessageTime = Date.now;
+    let lastMessageTime = Date.now;
 
     if(now-lastMessageTime<SPAM_DELAY){
         return;

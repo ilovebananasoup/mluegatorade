@@ -179,6 +179,12 @@ function onlineTrueFalse(online) {
     else {return "offline"}
 }
 
+const onlineThreshold = 20000;
+
+function updateOnline(data) {
+    return Date.now - data.lastOnline.toMillis() < onlineThreshold;
+}
+
 async function sendCommand(username, command){
 
     const q = query(
@@ -219,7 +225,7 @@ async function listUsers(){
 
     snap.forEach(docSnap=>{
         const data = docSnap.data();
-        print(data.username + " (" + docSnap.id + ") " + "[" + onlineTrueFalse(data.online) + "]");
+        print(data.username + " (" + docSnap.id + ") " + "[" + onlineTrueFalse(updateOnline(data)) + "]");
     });
 }
 

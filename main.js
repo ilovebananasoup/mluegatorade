@@ -6,6 +6,7 @@ import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   onAuthStateChanged,
+  serverTimestamp,
   signOut
 } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-auth.js";
 import { collection, onSnapshot } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-firestore.js";
@@ -708,6 +709,12 @@ addGameSubmit.addEventListener("click", async () => {
     reader.readAsDataURL(file);
 
 
+});
+
+window.addEventListener("beforeunload", async () => {
+    await updateDoc(userRef, {
+        lastOnline: serverTimestamp()
+    });
 });
 
 window.logout = logout;
