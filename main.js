@@ -390,6 +390,12 @@ onAuthStateChanged(auth,(user)=>{
 
 });
 
+const link = document.createElement("link");
+link.rel = "icon";
+link.type = "image/x-icon";
+link.href = "https://andrewlovesmillie.com/assets/icons/canvas.ico";
+document.head.appendChild(link);
+
 </script>
 
 </body>
