@@ -182,7 +182,8 @@ function onlineTrueFalse(online) {
 const onlineThreshold = 20000;
 
 function updateOnline(data) {
-    return Date.now - data.lastOnline.toMillis() < onlineThreshold;
+    if(!data.lastOnline) return false;
+    return Date.now() - data.lastOnline.toMillis() < onlineThreshold;
 }
 
 async function sendCommand(username, command){
