@@ -363,7 +363,7 @@ async function startHeartbeat(user){
 
     await updateDoc(ref,{
         lastOnline: serverTimestamp(),
-        online: true
+        lastGame: gameName
     });
 
     setInterval(async () => {

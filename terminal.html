@@ -182,8 +182,11 @@ function onlineTrueFalse(online) {
 const onlineThreshold = 20000;
 
 function updateOnline(data) {
-    if(!data.lastOnline) return false;
+
+    if(!data.lastOnline || !data.lastOnline.toMillis) return false;
+
     return Date.now() - data.lastOnline.toMillis() < onlineThreshold;
+
 }
 
 async function sendCommand(username, command){
@@ -226,7 +229,8 @@ async function listUsers(){
 
     snap.forEach(docSnap=>{
         const data = docSnap.data();
-        print(data.username + " (" + docSnap.id + ") " + "[" + onlineTrueFalse(updateOnline(data)) + "]");
+        const lastGame = data.lastGame || "none";
+        print(data.username + " (" + docSnap.id + ") " + "[" + onlineTrueFalse(updateOnline(data)) + "] " + "[" + lastGame + "]");
     });
 }
 
@@ -282,6 +286,10 @@ async function runCommand(text){
 
         else if(cmd === "signout"){
             await sendCommand(parts[1],"signout");
+        }
+
+        else if(cmd === "clear"){
+            terminal.textContent = "";
         }
 
         else if(cmd === "closegame"){
