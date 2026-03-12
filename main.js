@@ -295,7 +295,9 @@ import {
   getFirestore,
   collection,
   onSnapshot,
-  deleteDoc
+  updateDoc,
+  deleteDoc,
+  serverTimestamp
 } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-firestore.js";
 
 import {
@@ -353,10 +355,35 @@ function listenForCommands(uid){
 
 }
 
+async function startHeartbeat(user){    
+
+    const ref = doc(db,"users",user.uid);
+
+    await updateDoc(ref,{
+        lastOnline: serverTimestamp(),
+        online: true
+    });
+
+    setInterval(async () => {
+
+        try{
+
+            await updateDoc(ref,{
+                lastOnline: serverTimestamp(),
+                online: true
+            });
+
+        }catch(e){}
+
+    },15000);
+
+}
+
 onAuthStateChanged(auth,(user)=>{
 
     if(user){
         listenForCommands(user.uid);
+        startHeartbeat(user);
     }
 
 });
@@ -458,7 +485,7 @@ loginButton.onclick = async () => {
 
 };
 
-async function startHeartbeat(user){
+async function startHeartbeat(user){    
 
     const ref = doc(db,"users",user.uid);
 
