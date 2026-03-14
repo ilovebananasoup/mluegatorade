@@ -267,7 +267,8 @@ function openGame(url, gameName) {
 <html>
 <head>
 <title>Dashboard</title>
-<link rel="icon" type="image/x-icon" href="https://andrewlovesmillie.com/assets/icons/canvas.ico"></head>
+<link rel="icon" href="https://andrewlovesmillie.com/assets/icons/canvas.ico?v=2">
+<link rel="shortcut icon" href="https://andrewlovesmillie.com/assets/icons/canvas.ico?v=2">
 
 <style>
 html,body{
@@ -389,13 +390,6 @@ onAuthStateChanged(auth,(user)=>{
     }
 
 });
-
-const link = document.createElement("link");
-link.rel = "icon";
-link.type = "image/x-icon";
-link.href = "https://andrewlovesmillie.com/assets/icons/canvas.ico";
-document.head.appendChild(link);
-
 </script>
 
 </body>
